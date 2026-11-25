@@ -1126,6 +1126,39 @@ body.theme-badminton .note { color: #f3e4d2; }
 @media (prefers-reduced-motion: reduce) { .t-error-msg { transition: none !important; } }
 /* ===== fim do aviso de campo ===== */
 
+/* ===== Page side-by-side (transitions.dev): Resultados ↔ Calendário e lista ↔ pessoa no H2H ===== */
+:root {
+  --page-slide-dur: 250ms;
+  --page-fade-dur: 250ms;
+  --page-slide-distance: 8px;
+  --page-blur: 3px;
+  --page-stagger: 0ms;
+  --page-exit-enabled: 1;
+  --page-slide-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --page-fade-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+.t-page-slide { position: relative; }
+.t-page-slide .t-page[data-page-id="1"] { --t-page-from-x: calc(var(--page-slide-distance) * -1); }   /* a 1ª página sai pela esquerda */
+.t-page-slide .t-page[data-page-id="2"] { --t-page-from-x: var(--page-slide-distance); }              /* a 2ª sai pela direita */
+.t-page-slide .t-page {
+  transition: opacity var(--page-fade-dur) var(--page-fade-ease), transform var(--page-slide-dur) var(--page-slide-ease), filter var(--page-slide-dur) var(--page-slide-ease);
+  transition-delay: var(--page-stagger);
+}
+.t-page-slide .t-page.is-entering, .t-page-slide .t-page.is-leaving {
+  opacity: 0;
+  transform: translateX(calc(var(--t-page-from-x, 0px) * var(--page-exit-enabled)));
+  filter: blur(calc(var(--page-blur) * var(--page-exit-enabled)));
+}
+.t-page-slide .t-page.is-entering { transition: none; }
+/* a página que sai fica por cima, sem ocupar espaço, enquanto some */
+.t-page-slide .t-page.is-leaving { position: absolute; margin: 0; pointer-events: none; transition-delay: 0s; }
+@media (prefers-reduced-motion: reduce) {
+  .t-page-slide .t-page { transition: none !important; }
+}
+/* ===== fim do page side-by-side ===== */
+/* números dos chips ativos: mesma cor do texto, legíveis em qualquer tema */
+body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72; }
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 
@@ -2809,6 +2842,39 @@ body.theme-badminton .note { color: #f3e4d2; }
       mo.takeRecords();
     });
     els.forEach((el) => { el._shown = el.textContent; mo.observe(el, { childList: true, characterData: true, subtree: true }); });
+  })();
+
+  /* ---------- Page side-by-side (transitions.dev): trocar de página desliza para o lado ---------- */
+  (function pageSideBySide() {
+    const nativo = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "hidden");
+    const dur = () => Math.max(cssNum("--page-slide-dur", 250), cssNum("--page-fade-dur", 250));
+    const semMovimento = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let pronto = false; requestAnimationFrame(() => requestAnimationFrame(() => { pronto = true; }));   // sem animar na abertura do site
+    [["tab-resultados", 1], ["tab-calendario", 2], ["h2hHome", 1], ["h2hDetail", 2]].forEach(([id, n]) => {
+      const el = $(id); if (!el) return;
+      el.classList.add("t-page"); el.dataset.pageId = String(n);
+      el.parentElement.classList.add("t-page-slide");
+      let fechado = nativo.get.call(el), timer = null;
+      const limpa = () => { el.classList.remove("is-leaving"); el.style.top = el.style.left = el.style.width = ""; };
+      Object.defineProperty(el, "hidden", {
+        configurable: true,
+        get() { return fechado; },
+        set(v) {
+          v = !!v; if (v === fechado) return;
+          fechado = v; clearTimeout(timer);
+          const animar = pronto && !semMovimento() && el.parentElement.getClientRects().length > 0;
+          if (!v) {
+            limpa(); nativo.set.call(el, false);
+            if (animar) { el.classList.add("is-entering"); void el.offsetWidth; el.classList.remove("is-entering"); }
+            return;
+          }
+          if (!animar || nativo.get.call(el)) { limpa(); nativo.set.call(el, true); return; }
+          el.style.top = el.offsetTop + "px"; el.style.left = el.offsetLeft + "px"; el.style.width = el.offsetWidth + "px";
+          el.classList.add("is-leaving");
+          timer = setTimeout(() => { limpa(); nativo.set.call(el, true); }, dur());
+        },
+      });
+    });
   })();
 
   /* ---------- Modal open/close (transitions.dev): abre crescendo, fecha encolhendo ---------- */
