@@ -998,6 +998,27 @@ body.theme-badminton .note { color: #f3e4d2; }
 }
 /* ===== fim do tabs sliding ===== */
 
+/* ===== Modal open/close (transitions.dev) — janelas crescem do centro ao abrir e encolhem ao fechar ===== */
+:root {
+  --modal-open-dur: 250ms;
+  --modal-close-dur: 150ms;
+  --modal-scale: 0.96;
+  --modal-scale-close: 0.96;
+  --modal-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+.t-modal-bg:not([hidden]) { animation: tModalBgIn var(--modal-open-dur) var(--modal-ease); }
+.t-modal-bg:not([hidden]) .t-modal { transform-origin: center; animation: tModalIn var(--modal-open-dur) var(--modal-ease) both; will-change: transform, opacity; }
+.t-modal-bg.is-closing { pointer-events: none; animation: tModalBgOut var(--modal-close-dur) var(--modal-ease) forwards; }
+.t-modal-bg.is-closing .t-modal { animation: tModalOut var(--modal-close-dur) var(--modal-ease) forwards; }
+@keyframes tModalIn { from { transform: scale(var(--modal-scale)); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes tModalOut { from { transform: scale(1); opacity: 1; } to { transform: scale(var(--modal-scale-close)); opacity: 0; } }
+@keyframes tModalBgIn { from { opacity: 0; } }
+@keyframes tModalBgOut { to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .t-modal, .t-modal-bg { animation: none !important; transition: none !important; }
+}
+/* ===== fim do modal open/close ===== */
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 
@@ -2472,6 +2493,31 @@ body.theme-badminton .note { color: #f3e4d2; }
     if (act === "del-no") { pendingDelete.delete(id); renderTennis(); }
     if (act === "del-yes") { pendingDelete.delete(id); removeMatch(id); }
   });
+
+  /* ---------- Modal open/close (transitions.dev): abre crescendo, fecha encolhendo ---------- */
+  (function modalTransitions() {
+    const nativo = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "hidden");
+    const closeMs = () => parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--modal-close-dur")) || 150;
+    const semMovimento = () => window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    ["allBg", "h2hBg", "sheetBg", "authBg"].map((id) => document.getElementById(id)).filter(Boolean).forEach((el) => {
+      el.classList.add("t-modal-bg");
+      el.querySelectorAll(":scope > .sheet, :scope > .authcard").forEach((c) => c.classList.add("t-modal"));
+      // o resto do site continua usando el.hidden; aqui o "esconder" espera a animação de fechar terminar
+      let fechado = nativo.get.call(el), timer = null;
+      Object.defineProperty(el, "hidden", {
+        configurable: true,
+        get() { return fechado; },
+        set(v) {
+          v = !!v; if (v === fechado) return;
+          fechado = v; clearTimeout(timer);
+          if (!v) { el.classList.remove("is-closing"); nativo.set.call(el, false); return; }
+          if (semMovimento()) { nativo.set.call(el, true); return; }
+          el.classList.add("is-closing");
+          timer = setTimeout(() => { el.classList.remove("is-closing"); nativo.set.call(el, true); }, closeMs());
+        },
+      });
+    });
+  })();
 
   function renderAll() { renderCalPick(); renderCal(); renderSheet(); renderTennis(); }
   renderAll();
