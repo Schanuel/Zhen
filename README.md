@@ -55,6 +55,22 @@ Sem isso, os links de confirmação de e-mail e de "esqueci minha senha" não vo
 2. Confirme o e-mail pelo link que chegar e entre.
 3. Crie outra conta com outro e-mail: ela começa vazia e não vê nada da primeira.
 
+## Contas só por convite
+
+O site não tem botão de criar conta. Só o dono cria as contas, pelo Supabase.
+
+**Bloquear cadastros (uma vez só):** Authentication → **Sign In / Providers** → desligue **Allow new users to sign up** → **Save**.
+
+**Criar a conta de alguém:**
+1. Authentication → **Users** → **Add user** → **Create new user**.
+2. Coloque o e-mail da pessoa e uma senha provisória.
+3. Deixe marcado **Auto Confirm User** e clique em **Create user**.
+4. Mande para a pessoa o endereço do site, o e-mail e a senha provisória.
+
+Na primeira entrada, o site pede para a pessoa criar uma senha só dela. Depois ela pode trocar quando quiser em **Trocar senha**, no topo do site.
+
+**Tirar o acesso de alguém:** Authentication → **Users** → clique nos **⋯** da pessoa → **Delete user**. Os dados dela são apagados junto.
+
 ## Dicas
 
 - **Confirmação de e-mail:** por padrão o Supabase exige que a pessoa confirme o e-mail antes de entrar. Para desligar, vá em **Authentication** → **Sign In / Providers** → **Email** e desmarque **Confirm email**.

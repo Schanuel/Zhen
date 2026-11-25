@@ -664,6 +664,8 @@ body { background: #000; }
 .authlinks { display: flex; justify-content: center; }
 .linkbtn { background: transparent; border: 0; color: var(--ink-2); padding: 4px 6px; font-size: .84rem; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
 .linkbtn:hover { color: #fff; filter: none; }
+.authnote { margin: -4px 0 4px; font-size: .86rem; line-height: 1.45; color: var(--ink-3); }
+#authInvite { margin: 6px 0 0; text-align: center; }
 .acct { display: flex; align-items: center; gap: 8px; font-size: .78rem; color: var(--ink-3); min-width: 0; }
 .acct span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
 @media (max-width: 520px) { .acct span { display: none; } .side .acct { justify-self: end; margin-top: -16px; } .side .acct .linkbtn { padding: 2px 0; font-size: .8rem; } }
@@ -994,12 +996,9 @@ body.theme-badminton .note { color: #f3e4d2; }
   <div class="authcard">
     <div class="authbrand">Zhen<span>.</span></div>
     <p class="authtag">Seu diário de treinos, calendários e resultados.</p>
-    <div class="hseg" id="authTabs" role="group" aria-label="Acesso">
-      <button type="button" data-m="entrar" aria-pressed="true">Entrar</button>
-      <button type="button" data-m="criar" aria-pressed="false">Criar conta</button>
-    </div>
     <form id="authForm" class="authform" autocomplete="on">
       <h2 id="authTitle" class="authtitle">Entrar</h2>
+      <p class="authnote" id="authNote" hidden></p>
       <div class="field" id="authEmailField">
         <label class="label" for="authEmail">E-mail</label>
         <input id="authEmail" type="email" autocomplete="email" required placeholder="voce@email.com">
@@ -1010,6 +1009,7 @@ body.theme-badminton .note { color: #f3e4d2; }
       </div>
       <button type="submit" id="authSubmit">Entrar</button>
       <p class="authmsg" id="authMsg" role="status"></p>
+      <p class="authnote" id="authInvite">Ainda não tem conta? Peça um acesso ao dono do Zhen.</p>
       <div class="authlinks">
         <button type="button" class="linkbtn" id="authForgot">Esqueci minha senha</button>
         <button type="button" class="linkbtn" id="authBack" hidden>Voltar para entrar</button>
@@ -1023,7 +1023,7 @@ body.theme-badminton .note { color: #f3e4d2; }
     <h1 aria-label="Zhen"><span class="full">Zhen</span><span class="mini">Z</span><span class="bdot">.</span></h1>
     <span class="today" id="todayLabel"></span>
   </div>
-  <div class="acct"><span id="acctEmail"></span><button type="button" class="linkbtn" id="logoutBtn">Sair</button></div>
+  <div class="acct"><span id="acctEmail"></span><button type="button" class="linkbtn" id="passBtn">Trocar senha</button><button type="button" class="linkbtn" id="logoutBtn">Sair</button></div>
   <nav aria-label="Seções">
     <a href="#resultados" data-tab="resultados"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3M12 14v4M8 21h8"/></svg><span>Resultados</span></a>
     <a href="#calendario" data-tab="calendario"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span>Calendário</span></a>
@@ -1440,7 +1440,9 @@ body.theme-badminton .note { color: #f3e4d2; }
   }
   async function enterApp(user) {
     sbUser = user;
-    $("authBg").hidden = true;
+    // primeira entrada de uma conta criada pelo dono: a pessoa troca a senha recebida por uma só dela
+    if (!(user.user_metadata || {}).senha_definida) showAuth("primeira-senha");
+    else $("authBg").hidden = true;
     $("acctEmail").textContent = user.email || "";
     status("Carregando seus dados…");
     try { await loadAll(); status(""); }
@@ -1461,27 +1463,38 @@ body.theme-badminton .note { color: #f3e4d2; }
     authMode = mode;
     $("authBg").hidden = false;
     document.querySelectorAll("#authTabs button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.m === mode));
-    $("authTabs").hidden = mode === "nova-senha" || mode === "esqueci";
-    $("authEmailField").hidden = mode === "nova-senha";
+    const novaSenha = mode === "nova-senha" || mode === "primeira-senha";
+    $("authEmailField").hidden = novaSenha;
     $("authPassField").hidden = mode === "esqueci";
     $("authPass").autocomplete = mode === "entrar" ? "current-password" : "new-password";
-    $("authTitle").textContent = { entrar: "Entrar", criar: "Criar conta", esqueci: "Recuperar senha", "nova-senha": "Nova senha" }[mode];
-    $("authSubmit").textContent = { entrar: "Entrar", criar: "Criar conta", esqueci: "Enviar link por e-mail", "nova-senha": "Salvar nova senha" }[mode];
+    $("authPass").value = "";
+    $("authTitle").textContent = { entrar: "Entrar", esqueci: "Recuperar senha", "nova-senha": "Nova senha", "primeira-senha": "Crie sua senha" }[mode];
+    $("authSubmit").textContent = { entrar: "Entrar", esqueci: "Enviar link por e-mail", "nova-senha": "Salvar nova senha", "primeira-senha": "Salvar e entrar" }[mode];
+    $("authNote").hidden = mode !== "primeira-senha";
+    $("authNote").textContent = "Bem-vindo ao Zhen! Troque a senha que você recebeu por uma só sua.";
+    $("authInvite").hidden = mode !== "entrar";
     $("authForgot").hidden = mode !== "entrar";
-    $("authBack").hidden = !(mode === "esqueci");
-    $("authPassLabel").textContent = mode === "nova-senha" ? "Nova senha" : "Senha";
+    $("authBack").hidden = mode === "entrar";
+    $("authBack").textContent = mode === "esqueci" ? "Voltar para entrar" : mode === "primeira-senha" ? "Sair" : "Cancelar";
+    $("authPassLabel").textContent = novaSenha ? "Nova senha" : "Senha";
     $("authMsg").textContent = msg || ""; $("authMsg").dataset.kind = kind || "";
   }
-  $("authTabs").addEventListener("click", (e) => { const b = e.target.closest("button[data-m]"); if (b) showAuth(b.dataset.m); });
   $("authForgot").addEventListener("click", () => showAuth("esqueci"));
-  $("authBack").addEventListener("click", () => showAuth("entrar"));
+  $("authBack").addEventListener("click", () => {
+    if (authMode === "primeira-senha") sb.auth.signOut();
+    else if (authMode === "nova-senha" && sbUser) $("authBg").hidden = true;
+    else showAuth("entrar");
+  });
+  $("passBtn").addEventListener("click", () => showAuth("nova-senha"));
   $("logoutBtn").addEventListener("click", async () => { await sb.auth.signOut(); });
   const authErr = (e) => {
     const m = (e && e.message || "").toLowerCase();
     if (m.includes("invalid login")) return "E-mail ou senha incorretos.";
     if (m.includes("email not confirmed")) return "Confirme seu e-mail antes de entrar. O link chegou na sua caixa de entrada.";
     if (m.includes("already registered")) return "Esse e-mail já tem conta. Use a aba Entrar.";
+    if (m.includes("different from the old")) return "Escolha uma senha diferente da que você recebeu.";
     if (m.includes("password should be")) return "A senha precisa ter pelo menos 6 caracteres.";
+    if (m.includes("signups not allowed") || m.includes("signup is disabled")) return "Novas contas são criadas só pelo dono do Zhen.";
     if (m.includes("rate limit")) return "Muitas tentativas seguidas. Espere um pouco e tente de novo.";
     return "Não deu certo: " + (e && e.message || "erro desconhecido");
   };
@@ -1494,16 +1507,13 @@ body.theme-badminton .note { color: #f3e4d2; }
       if (authMode === "entrar") {
         const { error } = await sb.auth.signInWithPassword({ email, password: pass });
         if (error) throw error;
-      } else if (authMode === "criar") {
-        const { data: r, error } = await sb.auth.signUp({ email, password: pass, options: { emailRedirectTo: location.origin + location.pathname } });
-        if (error) throw error;
-        if (!r.session) showAuth("entrar", "Conta criada! Enviamos um link para " + email + ". Confirme o e-mail e depois entre aqui.", "ok");
       } else if (authMode === "esqueci") {
         const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
         if (error) throw error;
         showAuth("entrar", "Se existir uma conta com " + email + ", você vai receber um link para criar uma nova senha.", "ok");
-      } else if (authMode === "nova-senha") {
-        const { error } = await sb.auth.updateUser({ password: pass });
+      } else if (authMode === "nova-senha" || authMode === "primeira-senha") {
+        if (pass.length < 6) throw { message: "Password should be at least 6 characters" };
+        const { error } = await sb.auth.updateUser({ password: pass, data: { senha_definida: true } });
         if (error) throw error;
         $("authBg").hidden = true; status("Senha alterada.");
       }
