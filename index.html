@@ -1159,6 +1159,33 @@ body.theme-badminton .note { color: #f3e4d2; }
 /* números dos chips ativos: mesma cor do texto, legíveis em qualquer tema */
 body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72; }
 
+/* ===== Icon swap (transitions.dev): um ícone vira outro no mesmo lugar ===== */
+:root {
+  --icon-swap-dur: 250ms;
+  --icon-swap-blur: 2px;
+  --icon-swap-start-scale: 0.25;
+  --icon-swap-ease: ease-in-out;
+}
+.t-icon-swap { position: relative; display: inline-grid; place-items: center; }
+.t-icon-swap .t-icon {
+  grid-area: 1 / 1; display: inline-grid; place-items: center;
+  transition: opacity var(--icon-swap-dur) var(--icon-swap-ease), filter var(--icon-swap-dur) var(--icon-swap-ease), transform var(--icon-swap-dur) var(--icon-swap-ease);
+}
+.t-icon-swap[data-state="a"] .t-icon[data-icon="a"],
+.t-icon-swap[data-state="b"] .t-icon[data-icon="b"] { opacity: 1; filter: blur(0); transform: scale(1); }
+.t-icon-swap[data-state="a"] .t-icon[data-icon="b"],
+.t-icon-swap[data-state="b"] .t-icon[data-icon="a"] { opacity: 0; filter: blur(var(--icon-swap-blur)); transform: scale(var(--icon-swap-start-scale)); }
+/* busca: lupa quando vazia, × quando tem texto (só o × é clicável) */
+.t-clear-btn { opacity: 1; }
+.t-clear:not(.has-value) .t-clear-btn { opacity: 1; pointer-events: none; color: #5f5f66; }
+.t-clear-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+/* fogo do calendário: os dois fogos ficam um sobre o outro */
+.streakbadge .flame .t-icon-swap .t-icon { transform-origin: 50% 80%; }
+@media (prefers-reduced-motion: reduce) {
+  .t-icon-swap .t-icon { transition: none !important; }
+}
+/* ===== fim do icon swap ===== */
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 
@@ -1783,7 +1810,9 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
     $("calDelCancel").hidden = $("calDel").hidden || !confirmCalDel;
     $("totalBtnText").textContent = totalMode ? `Voltar para ${calName(curCal)}` : "Seu calendário total";
     $("totalBtnSub").textContent = totalMode ? "Ver só esse calendário de novo" : `Todos os seus ${cals.length > 1 ? cals.length + " calendários" : "calendários"} juntos num só`;
-    $("totalBtn").querySelector("b").textContent = totalMode ? "←" : "→";
+    const tb = $("totalBtn").querySelector("b");
+    if (!tb.querySelector(".t-icon-swap")) tb.innerHTML = '<span class="t-icon-swap" data-state="a"><span class="t-icon" data-icon="a">→</span><span class="t-icon" data-icon="b">←</span></span>';
+    tb.firstElementChild.dataset.state = totalMode ? "b" : "a";
   }
   /* arrastar para mudar a ordem dos calendários (mouse: arrasta; celular: segura um instante e arrasta) */
   let calDrag = null, skipClick = false;
@@ -1957,7 +1986,8 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
       best = Math.max(best, run); prev = d;
     }
     $("sBadge").dataset.on = streak >= 1 ? "true" : "false";
-    $("sFlame").innerHTML = flameSVG(streak >= 1);
+    if (!$("sFlame").querySelector(".t-icon-swap")) $("sFlame").innerHTML = `<span class="t-icon-swap" data-state="a"><span class="t-icon" data-icon="a">${flameSVG(false)}</span><span class="t-icon" data-icon="b">${flameSVG(true)}</span></span>`;
+    $("sFlame").firstElementChild.dataset.state = streak >= 1 ? "b" : "a";
     $("sNum").textContent = streak;
     $("sBadgeN").textContent = streak === 1 ? "1 dia seguido" : `${streak} dias seguidos`;
     $("sBadgeTxt").textContent = streak >= 1
@@ -2743,7 +2773,8 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
       input.parentNode.insertBefore(wrap, input); wrap.appendChild(input);
       const mk = (cls, tag = "span") => { const el = document.createElement(tag); el.className = cls; wrap.appendChild(el); return el; };
       const mirror = mk("t-clear-mirror"), phold = mk("t-clear-placeholder"), glow = mk("t-clear-glow");
-      const btn = mk("t-clear-btn", "button"); btn.type = "button"; btn.textContent = "×"; btn.setAttribute("aria-label", "Limpar busca");
+      const btn = mk("t-clear-btn", "button"); btn.type = "button"; btn.setAttribute("aria-label", "Limpar busca");
+      btn.innerHTML = '<span class="t-icon-swap" data-state="a"><span class="t-icon" data-icon="a"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></span><span class="t-icon" data-icon="b"><svg viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></span></span>';
       phold.textContent = input.placeholder;
       mirror.setAttribute("aria-hidden", "true"); phold.setAttribute("aria-hidden", "true"); glow.setAttribute("aria-hidden", "true");
       const canvas = document.createElement("canvas").getContext("2d");
@@ -2752,6 +2783,7 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
       const sync = () => {
         const has = input.value.length > 0;
         wrap.classList.toggle("has-value", has);
+        btn.firstElementChild.dataset.state = has ? "b" : "a"; btn.tabIndex = has ? 0 : -1;
         if (has && !clearing) mirror.textContent = input.value.replace(/ /g, " ");
       };
       function buildGlow(text) {
@@ -2781,7 +2813,7 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
         const cs = getComputedStyle(root), easeOut = bezier(cs.getPropertyValue("--clear-out-ease")), easeIn = bezier(cs.getPropertyValue("--clear-in-ease"));
         input.value = "";
         input.dispatchEvent(new Event("input", { bubbles: true }));   // a lista volta a mostrar tudo
-        wrap.classList.remove("has-value"); wrap.classList.add("is-clearing");
+        wrap.classList.remove("has-value"); wrap.classList.add("is-clearing"); btn.firstElementChild.dataset.state = "a";
         glow.style.background = buildGlow(mirror.textContent); glow.style.opacity = "0";
         phold.style.transform = `translateY(-${inFly}px)`; phold.style.opacity = "0.9"; phold.style.filter = `blur(${blur}px)`;
         const t0 = performance.now();
