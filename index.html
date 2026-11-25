@@ -1213,7 +1213,11 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
 .avatar svg { width: 18px; height: 18px; fill: none; stroke: #c4c4ca; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .avatar.big { width: 52px; height: 52px; font-size: 1.4rem; }
 .avatar.big svg { width: 22px; height: 22px; }
-.perfil-email { font-size: .84rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+.perfil-email { font-size: .9rem; font-weight: 700; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 170px; }
+.perfil-nomeform { display: grid; gap: 8px; padding: 4px 6px 10px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
+.perfil-nomeform input { padding: 9px 11px; font-size: .9rem; }
+.perfil-nomeform div { display: flex; gap: 6px; justify-content: flex-end; }
+.perfil-nomeform button { padding: 7px 12px; font-size: .82rem; border-radius: 9px; }
 .perfil-menu { position: absolute; top: calc(100% + 10px); left: 0; min-width: 250px; max-width: calc(100vw - 32px); padding: 8px; display: grid; gap: 2px;
   background: rgba(14, 14, 17, .97); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
   border: 1px solid var(--line-2); border-radius: 16px; box-shadow: 0 26px 60px -18px rgba(0, 0, 0, .9); }
@@ -1229,11 +1233,13 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
 .perfil-menu [role="menuitem"].perigo:hover { background: rgba(255, 90, 95, .12); color: #ffb3b6; }
 .perfil-menu hr { border: 0; border-top: 1px solid var(--line); margin: 4px 2px; }
 @media (min-width: 760px) {
-  .side { justify-content: flex-start !important; }
-  .side nav { margin-left: auto; }
-  .perfil { padding-right: 18px; margin-right: 2px; border-right: 1px solid var(--line); }
+  :root { --perfil-w: 160px; }
+  /* a foto fica grudada no canto esquerdo da tela; o resto da barra abre espaço para ela */
+  .side { padding-left: max(calc(var(--perfil-w) + 32px), env(safe-area-inset-left, 0px), calc((100% - var(--wrap-w)) / 2)) !important; }
+  .side .perfil { position: absolute; left: max(14px, env(safe-area-inset-left, 0px)); top: 50%; transform: translateY(-50%); max-width: 240px; }
+  .side .perfil-menu { top: calc(100% + 12px); }
 }
-@media (max-width: 759px) { .perfil { justify-self: start; margin-bottom: -4px; } }
+@media (max-width: 759px) { .perfil { justify-self: start; margin-bottom: -4px; margin-left: -6px; } }
 
 /* ===== Caixas de escolha (no lugar do select do navegador) ===== */
 .fsel { position: relative; }
@@ -3023,6 +3029,7 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
     foto: '<svg viewBox="0 0 24 24"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1.5-2h6l1.5 2h2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="13" r="3.3"/></svg>',
     lixo: '<svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>',
     chave: '<svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="3.5"/><path d="M10.5 12.5L19 4M16 7l2 2M14 9l1.5 1.5"/></svg>',
+    lapis: '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></svg>',
     sair: '<svg viewBox="0 0 24 24"><path d="M14 5h4a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1h-4M10 16l4-4-4-4M14 12H4"/></svg>',
   };
   (function perfilUI() {
@@ -3032,6 +3039,12 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
         <span class="avatar" id="perfilAvatar"></span><span class="perfil-email" id="perfilEmail"></span></button>
       <div class="perfil-menu t-dropdown" id="perfilMenu" role="menu" data-origin="top-left" hidden>
         <div class="perfil-head"><span class="avatar big" id="perfilAvatar2"></span><div><b id="perfilNome"></b><small id="perfilSub"></small></div></div>
+        <form class="perfil-nomeform" id="perfilNomeForm" hidden autocomplete="off">
+          <label class="label" for="perfilNomeIn">Seu nome</label>
+          <input id="perfilNomeIn" maxlength="40" placeholder="Como você quer aparecer">
+          <div><button type="button" class="ghost" id="perfilNomeCancel">Cancelar</button><button type="submit">Salvar</button></div>
+        </form>
+        <button type="button" role="menuitem" id="perfilNomeBtn">${ICO.lapis}<span>Mudar nome</span></button>
         <button type="button" role="menuitem" id="perfilFotoBtn">${ICO.foto}<span>Adicionar foto</span></button>
         <button type="button" role="menuitem" id="perfilTirar" hidden>${ICO.lixo}<span>Remover foto</span></button>
       </div>
@@ -3052,7 +3065,7 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
     let saida = null;
     if (hover) {
       box.addEventListener("mouseenter", () => { clearTimeout(saida); abre(); });
-      box.addEventListener("mouseleave", () => { saida = setTimeout(fecha, 220); });
+      box.addEventListener("mouseleave", () => { saida = setTimeout(() => { if (!$("perfilNomeForm").contains(document.activeElement)) fecha(); }, 220); });
     }
     btn.addEventListener("click", () => { if (hover) { abre(); return; } aberto() ? fecha() : abre(); });
     btn.addEventListener("keydown", (e) => { if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") { e.preventDefault(); abre(); const f = menu.querySelector('[role="menuitem"]:not([hidden])'); f && f.focus(); } });
@@ -3061,7 +3074,24 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
       if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); const n = items[(i + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length]; n && n.focus(); }
       if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); fecha(); btn.focus(); }
     });
-    menu.addEventListener("click", (e) => { if (e.target.closest('[role="menuitem"]')) fecha(); });
+    menu.addEventListener("click", (e) => { const it = e.target.closest('[role="menuitem"]'); if (it && it.id !== "perfilNomeBtn") fecha(); });
+    // mudar o nome que aparece ao lado da foto
+    const nomeForm = $("perfilNomeForm");
+    const editaNome = (on) => {
+      nomeForm.hidden = !on; $("perfilNomeBtn").hidden = on || !canWrite;
+      if (on) { $("perfilNomeIn").value = perfilNome(); $("perfilNomeIn").focus(); $("perfilNomeIn").select(); }
+    };
+    $("perfilNomeBtn").addEventListener("click", () => editaNome(true));
+    $("perfilNomeCancel").addEventListener("click", () => editaNome(false));
+    $("perfilNomeIn").addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); editaNome(false); $("perfilNomeBtn").focus(); } });
+    nomeForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const nome = $("perfilNomeIn").value.trim().replace(/\s+/g, " ").slice(0, 40);
+      editaNome(false);
+      await savePerfil({ nome });
+      fecha();
+    });
+    nomeForm.addEventListener("keydown", (e) => e.stopPropagation(), false);
     document.addEventListener("pointerdown", (e) => { if (!box.contains(e.target)) fecha(); });
     $("perfilFotoBtn").addEventListener("click", () => $("perfilFile").click());
     $("perfilTirar").addEventListener("click", () => savePerfil({ foto: "" }));
@@ -3080,14 +3110,28 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
       } catch (err) { console.error(err); status("Não consegui usar essa imagem. Tente outra foto.", "err"); }
     });
   })();
+  // nome que aparece: o escolhido pela pessoa; senão, a parte do e-mail antes do @
+  function perfilNome() {
+    const email = (($("acctEmail") && $("acctEmail").textContent) || "").trim();
+    const n = (perfilDoc().nome || "").trim();
+    if (n) return n;
+    if (!email) return "Seu perfil";
+    const base = email.split("@")[0].replace(/[._-]+/g, " ").trim();
+    return base ? base.split(" ")[0].replace(/^./, (c) => c.toUpperCase()) : email;
+  }
   function renderPerfil() {
     if (!$("perfil")) return;
     const p = perfilDoc(), email = (($("acctEmail") && $("acctEmail").textContent) || "").trim();
-    const av = p.foto ? `<img src="${esc(p.foto)}" alt="">` : (email ? esc(email[0].toUpperCase()) : ICO.pessoa);
+    const nome = perfilNome(), ini = (nome !== "Seu perfil" ? nome : email).trim();
+    const av = p.foto ? `<img src="${esc(p.foto)}" alt="">` : (ini ? esc(ini[0].toUpperCase()) : ICO.pessoa);
     if ($("perfilAvatar")._av !== av) { $("perfilAvatar").innerHTML = av; $("perfilAvatar2").innerHTML = av; $("perfilAvatar")._av = av; }
-    $("perfilEmail").textContent = email || "Seu perfil";
-    $("perfilNome").textContent = email ? email.split("@")[0] : "Seu perfil";
+    $("perfilEmail").textContent = nome;
+    $("perfilBtn").setAttribute("aria-label", "Seu perfil: " + nome);
+    $("perfilNome").textContent = nome;
     $("perfilSub").textContent = email || (p.foto ? "Sua foto de perfil" : "Coloque uma foto sua jogando");
+    if ($("perfilNomeForm").hidden) $("perfilNomeBtn").hidden = !canWrite;
+    // a barra de cima abre só o espaço que a foto e o nome ocupam
+    requestAnimationFrame(() => { const w = $("perfil").offsetWidth; if (w) document.documentElement.style.setProperty("--perfil-w", w + "px"); });
     $("perfilFotoBtn").querySelector("span").textContent = p.foto ? "Trocar foto" : "Adicionar foto";
     $("perfilFotoBtn").hidden = !canWrite;
     $("perfilTirar").hidden = !canWrite || !p.foto;
