@@ -984,7 +984,7 @@ body.theme-badminton .note { color: #f3e4d2; }
 .t-tabs { position: relative; }
 .t-tabs > :not(.t-tabs-pill) { position: relative; z-index: 1; }
 .t-tabs.t-on > [aria-current="page"], .t-tabs.t-on > [aria-pressed="true"], .t-tabs.t-on > [aria-checked="true"] {
-  background: transparent !important; background-image: none !important; box-shadow: none !important; }
+  background: transparent !important; background-image: none !important; box-shadow: none !important; border-color: transparent !important; }
 .t-tabs-pill {
   position: absolute; top: 0; left: 0; width: 0; height: 0; z-index: 0; pointer-events: none; opacity: 0;
   transform: translate(0, 0);
@@ -1112,6 +1112,19 @@ body.theme-badminton .note { color: #f3e4d2; }
   .t-digit-group .t-digit { animation: none !important; }
 }
 /* ===== fim das transições do transitions.dev ===== */
+
+/* ===== Aviso de campo (no lugar do balão "Preencha este campo" do navegador) ===== */
+.t-error-msg { display: grid; grid-template-rows: 0fr; opacity: 0; visibility: hidden;
+  transition: grid-template-rows var(--revert-dur, 280ms) var(--shake-ease), opacity var(--revert-dur, 280ms) ease-out, visibility 0s linear var(--revert-dur, 280ms); }
+.t-error-msg.is-error { grid-template-rows: 1fr; opacity: 1; visibility: visible;
+  transition: grid-template-rows var(--revert-dur, 280ms) var(--shake-ease), opacity var(--revert-dur, 280ms) ease-out, visibility 0s linear 0s; }
+.t-error-msg > span { overflow: hidden; min-height: 0; display: flex; align-items: center; gap: 7px; padding-top: 7px;
+  font-size: .8rem; font-weight: 600; line-height: 1.35; color: var(--err); }
+.t-error-msg > span::before { content: "!"; flex: none; width: 16px; height: 16px; border-radius: 99px; display: grid; place-items: center;
+  background: var(--err); color: #1a0306; font-size: .68rem; font-weight: 800; line-height: 1; }
+.t-error-msg.wide { grid-column: 1 / -1; width: 100%; }
+@media (prefers-reduced-motion: reduce) { .t-error-msg { transition: none !important; } }
+/* ===== fim do aviso de campo ===== */
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
@@ -2599,19 +2612,59 @@ body.theme-badminton .note { color: #f3e4d2; }
   function shakeError(input, msgEl) {
     if (!input) return;
     input.classList.add("t-input", "is-error");
+    if (input._errMsg && input._errMsg !== msgEl) input._errMsg.classList.remove("is-error");
+    input._errMsg = msgEl || null;
     if (msgEl) msgEl.classList.add("is-error");
     input.classList.remove("is-shaking"); void input.offsetWidth; input.classList.add("is-shaking");
     const shakeMs = cssNum("--shake-dur-a", 80) * 2 + cssNum("--shake-dur-b", 60) * 2;
     setTimeout(() => input.classList.remove("is-shaking"), shakeMs + 20);
     clearTimeout(input._revertTimer);
-    input._revertTimer = setTimeout(() => { input.classList.remove("is-error"); if (msgEl) msgEl.classList.remove("is-error"); }, shakeMs + cssNum("--revert-hold", 3000));
+    input._revertTimer = setTimeout(() => { input.classList.remove("is-error"); if (input._errMsg) input._errMsg.classList.remove("is-error"); }, shakeMs + cssNum("--revert-hold", 3000));
     if (!input._shakeWired) {
       input._shakeWired = true;
-      input.addEventListener("input", () => { clearTimeout(input._revertTimer); input.classList.remove("is-error"); if (msgEl) msgEl.classList.remove("is-error"); });
+      const limpa = () => { clearTimeout(input._revertTimer); input.classList.remove("is-error"); if (input._errMsg) input._errMsg.classList.remove("is-error"); };
+      input.addEventListener("input", limpa); input.addEventListener("change", limpa);
     }
   }
-  // campo obrigatório vazio ou placar fora do formato: o navegador avisa e o campo treme
-  document.addEventListener("invalid", (e) => { if (e.target.matches("input, select, textarea")) shakeError(e.target); }, true);
+  // campo obrigatório vazio ou fora do formato: no lugar do balão do navegador, um aviso do Zhen embaixo do campo
+  const FIELD_MSG = {
+    tOpp: "Escreva o nome do adversário.", tOpp2: "Escreva o nome do 2º adversário.", tPartner: "Escreva o nome do seu parceiro.",
+    tScore: "Escreva o placar, por exemplo 6-4 6-3.", tDate: "Escolha a data da partida.", aName: "Escreva o que você fez.",
+    newCalName: "Dê um nome ao calendário.", tSportName: "Escreva o nome do esporte.", authEmail: "Escreva seu e-mail.", authPass: "Escreva sua senha.",
+  };
+  function fieldMessage(el) {
+    const v = el.validity;
+    if (v.valueMissing) return FIELD_MSG[el.id] || (el.tagName === "SELECT" ? "Escolha uma opção." : el.type === "date" ? "Escolha uma data." : "Preencha este campo.");
+    if (v.patternMismatch) return el.id === "tScore" ? "Use o formato 6-4 6-3 (um set depois do outro)." : "Confira o formato.";
+    if (v.typeMismatch) return el.type === "email" ? "Esse e-mail não parece certo. Confira." : "Confira o que foi escrito.";
+    if (v.tooShort) return `Use pelo menos ${el.minLength} caracteres.`;
+    if (v.rangeUnderflow || v.rangeOverflow) return "Esse número está fora do permitido.";
+    return el.validationMessage || "Confira este campo.";
+  }
+  function msgFor(el) {
+    if (el._msg) return el._msg;
+    const msg = document.createElement("div");
+    msg.className = "t-error-msg"; msg.setAttribute("role", "alert");
+    msg.innerHTML = "<span></span>";
+    // em linha com botões (ex.: criar calendário), o aviso vai embaixo da linha inteira
+    const parent = el.parentElement, cs = getComputedStyle(parent);
+    const inRow = cs.display.includes("flex") && !cs.flexDirection.startsWith("column");
+    if (inRow) { msg.classList.add("wide"); parent.after(msg); } else el.after(msg);
+    msg.id = (el.id || "campo") + "-aviso";
+    el._msg = msg; el.setAttribute("aria-describedby", ((el.getAttribute("aria-describedby") || "") + " " + msg.id).trim());
+    return msg;
+  }
+  let lastInvalid = 0;
+  document.addEventListener("invalid", (e) => {
+    const el = e.target; if (!el.matches || !el.matches("input, select, textarea")) return;
+    e.preventDefault();                                        // sem o balão cinza do navegador
+    const now = performance.now(); if (now - lastInvalid < 60) return;   // só o primeiro campo com problema
+    lastInvalid = now;
+    const msg = msgFor(el); msg.firstChild.textContent = fieldMessage(el);
+    shakeError(el, msg);
+    el.focus({ preventScroll: true });
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+  }, true);
 
   // Accordion: abre e fecha um mês no "Ver todas as partidas" sem redesenhar a lista
   $("allList").addEventListener("click", (e) => {
@@ -2792,7 +2845,8 @@ body.theme-badminton .note { color: #f3e4d2; }
     const groups = [
       { el: document.querySelector("nav"), sel: '[aria-current="page"]' },
       { el: $("tKind"), sel: '[aria-checked="true"]' },
-      ...[...document.querySelectorAll(".hseg:not(.mod)")].filter((g) => g.id !== "authTabs").map((el) => ({ el, sel: '[aria-pressed="true"]' })),
+      ...[...document.querySelectorAll(".hseg")].filter((g) => g.id !== "authTabs").map((el) => ({ el, sel: '[aria-pressed="true"]' })),
+      ...["allKind", "hKind", "hSurf"].map((id) => ({ el: $(id), sel: '[aria-pressed="true"]' })),
     ].filter((g) => g.el);
     groups.forEach((g) => {
       g.el.classList.add("t-tabs");
@@ -2802,6 +2856,7 @@ body.theme-badminton .note { color: #f3e4d2; }
       g.last = null;
     });
     function place(g, animate) {
+      if (!g.pill.isConnected || g.pill.parentNode !== g.el) g.el.prepend(g.pill);   // a lista de chips é redesenhada a cada clique
       const tab = g.el.querySelector(":scope > " + g.sel);
       if (!tab || !g.el.offsetWidth) { g.el.classList.remove("t-on"); g.last = null; g.box = ""; return; }
       // cor da aba ativa (cada tema tem a sua): lê com a pílula desligada, sem deixar a aba piscar
@@ -2809,10 +2864,11 @@ body.theme-badminton .note { color: #f3e4d2; }
       g.el.classList.remove("t-on");
       const cs = getComputedStyle(tab);
       const bg = cs.backgroundImage !== "none" ? cs.backgroundImage : "", color = cs.backgroundColor, radius = cs.borderRadius;
+      const ring = cs.boxShadow !== "none" ? cs.boxShadow : (parseFloat(cs.borderTopWidth) && cs.borderTopColor !== color ? `inset 0 0 0 ${cs.borderTopWidth} ${cs.borderTopColor}` : "none");
       g.el.classList.add("t-on");
       void tab.offsetWidth; tab.style.transition = "";
       const p = g.pill, move = animate && g.last && g.last !== tab;
-      p.style.backgroundColor = color; p.style.backgroundImage = bg; p.style.borderRadius = radius;
+      p.style.backgroundColor = color; p.style.backgroundImage = bg; p.style.borderRadius = radius; p.style.boxShadow = ring;
       // só a cor mudou (troca de tema): não mexe na posição, para não cortar um deslize em andamento
       if (animate === "cor" && g.last === tab) return;
       // mesmo lugar e mesmo tamanho: nada a fazer (evita cortar um deslize em andamento)
@@ -2828,7 +2884,7 @@ body.theme-badminton .note { color: #f3e4d2; }
     }
     const sync = (animate) => groups.forEach((g) => place(g, animate));
     const mo = new MutationObserver(() => sync(true));
-    groups.forEach((g) => mo.observe(g.el, { attributes: true, subtree: true, attributeFilter: ["aria-current", "aria-pressed", "aria-checked"] }));
+    groups.forEach((g) => mo.observe(g.el, { childList: true, attributes: true, subtree: true, attributeFilter: ["aria-current", "aria-pressed", "aria-checked"] }));
     // troca de tema (esporte) e de tamanho de tela: reposiciona sem animar
     new MutationObserver(() => sync("cor")).observe(document.body, { attributes: true, attributeFilter: ["class"] });
     if (window.ResizeObserver) { const ro = new ResizeObserver(() => sync(false)); groups.forEach((g) => ro.observe(g.el)); }
