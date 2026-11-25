@@ -976,6 +976,28 @@ body.theme-badminton #tFire b.snum, body.theme-badminton .stat #tFire b.snum { c
 body.theme-badminton .note { color: #f3e4d2; }
 /* ===== fim do tema do badminton ===== */
 
+/* ===== Tabs sliding (transitions.dev) — a pílula desliza até a aba escolhida ===== */
+:root {
+  --tabs-dur: 250ms;
+  --tabs-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+.t-tabs { position: relative; }
+.t-tabs > :not(.t-tabs-pill) { position: relative; z-index: 1; }
+.t-tabs.t-on > [aria-current="page"], .t-tabs.t-on > [aria-pressed="true"], .t-tabs.t-on > [aria-checked="true"] {
+  background: transparent !important; background-image: none !important; box-shadow: none !important; }
+.t-tabs-pill {
+  position: absolute; top: 0; left: 0; width: 0; height: 0; z-index: 0; pointer-events: none; opacity: 0;
+  transform: translate(0, 0);
+  transition: transform var(--tabs-dur) var(--tabs-ease), width var(--tabs-dur) var(--tabs-ease),
+    height var(--tabs-dur) var(--tabs-ease), background-color var(--tabs-dur) var(--tabs-ease);
+  will-change: transform, width;
+}
+.t-tabs.t-on > .t-tabs-pill { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .t-tabs-pill, .t-tabs > * { transition: none !important; }
+}
+/* ===== fim do tabs sliding ===== */
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 
@@ -2454,6 +2476,56 @@ body.theme-badminton .note { color: #f3e4d2; }
   function renderAll() { renderCalPick(); renderCal(); renderSheet(); renderTennis(); }
   renderAll();
   startStorage();
+
+  /* ---------- Tabs sliding (transitions.dev): pílula que desliza entre as abas ---------- */
+  (function tabsSliding() {
+    const groups = [
+      { el: document.querySelector("nav"), sel: '[aria-current="page"]' },
+      { el: $("tKind"), sel: '[aria-checked="true"]' },
+      ...[...document.querySelectorAll(".hseg:not(.mod)")].filter((g) => g.id !== "authTabs").map((el) => ({ el, sel: '[aria-pressed="true"]' })),
+    ].filter((g) => g.el);
+    groups.forEach((g) => {
+      g.el.classList.add("t-tabs");
+      g.pill = document.createElement("span");
+      g.pill.className = "t-tabs-pill"; g.pill.setAttribute("aria-hidden", "true");
+      g.el.prepend(g.pill);
+      g.last = null;
+    });
+    function place(g, animate) {
+      const tab = g.el.querySelector(":scope > " + g.sel);
+      if (!tab || !g.el.offsetWidth) { g.el.classList.remove("t-on"); g.last = null; g.box = ""; return; }
+      // cor da aba ativa (cada tema tem a sua): lê com a pílula desligada, sem deixar a aba piscar
+      tab.style.transition = "none";
+      g.el.classList.remove("t-on");
+      const cs = getComputedStyle(tab);
+      const bg = cs.backgroundImage !== "none" ? cs.backgroundImage : "", color = cs.backgroundColor, radius = cs.borderRadius;
+      g.el.classList.add("t-on");
+      void tab.offsetWidth; tab.style.transition = "";
+      const p = g.pill, move = animate && g.last && g.last !== tab;
+      p.style.backgroundColor = color; p.style.backgroundImage = bg; p.style.borderRadius = radius;
+      // só a cor mudou (troca de tema): não mexe na posição, para não cortar um deslize em andamento
+      if (animate === "cor" && g.last === tab) return;
+      // mesmo lugar e mesmo tamanho: nada a fazer (evita cortar um deslize em andamento)
+      const box = [tab.offsetLeft, tab.offsetTop, tab.offsetWidth, tab.offsetHeight].join();
+      if (g.last === tab && g.box === box) return;
+      g.box = box;
+      const prev = p.style.transition;
+      if (!move) p.style.transition = "none";
+      p.style.transform = `translate(${tab.offsetLeft}px, ${tab.offsetTop}px)`;
+      p.style.width = tab.offsetWidth + "px"; p.style.height = tab.offsetHeight + "px";
+      if (!move) { void p.offsetWidth; p.style.transition = prev; }
+      g.last = tab;
+    }
+    const sync = (animate) => groups.forEach((g) => place(g, animate));
+    const mo = new MutationObserver(() => sync(true));
+    groups.forEach((g) => mo.observe(g.el, { attributes: true, subtree: true, attributeFilter: ["aria-current", "aria-pressed", "aria-checked"] }));
+    // troca de tema (esporte) e de tamanho de tela: reposiciona sem animar
+    new MutationObserver(() => sync("cor")).observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    if (window.ResizeObserver) { const ro = new ResizeObserver(() => sync(false)); groups.forEach((g) => ro.observe(g.el)); }
+    window.addEventListener("resize", () => sync(false));
+    requestAnimationFrame(() => sync(false));
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => sync(false));
+  })();
 })();
 </script>
 
