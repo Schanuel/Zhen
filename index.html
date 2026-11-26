@@ -1374,6 +1374,10 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
 @keyframes fogoFumaca3 { 0% { opacity: 0; transform: translate(0, 0) scale(.3); } 25% { opacity: .55; } 100% { opacity: 0; transform: translate(-2px, -60px) scale(2.3); } }
 /* ===== fim das animações do foguinho ===== */
 
+/* recorde da sequência, pequeno, embaixo do foguinho */
+.srecorde { justify-self: center; display: inline-flex; align-items: center; gap: 6px; margin: -4px 0 0; font-size: .74rem; font-weight: 600; color: var(--ink-3); letter-spacing: .01em; }
+.srecorde svg { width: 13px; height: 13px; fill: none; stroke: #f4c542; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 
@@ -1470,7 +1474,7 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
     <div class="calside-top">
     <div class="stats">
       <div class="stat"><span class="label">Dias ativos no mês</span><span class="firerow"><b id="sDays">0</b><span class="fire" id="sFire" hidden></span></span></div>
-      <div class="stat"><span class="label">Tempo no mês</span><b id="sTime">0h</b></div>
+      <div class="stat"><span class="label">Tempo no mês</span><span class="statnum"><b id="sTime">0</b><small class="unit" id="sTimeUnit">horas</small></span></div>
       <div class="stat"><span class="label">Atividades no mês</span><b id="sCount">0</b></div>
       <div class="stat"><span class="label">Sequência atual</span><span class="statnum"><b id="sStreak">0</b><small class="unit" id="sStreakUnit">dias</small></span></div>
     </div>
@@ -1479,6 +1483,7 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
       <b class="snum" id="sNum" hidden>0</b>
       <span class="sbtext"><b id="sBadgeN">0 dias</b><small id="sBadgeTxt">Sem sequência ativa</small></span>
     </div>
+    <p class="srecorde" id="sRecorde" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4v2a3 3 0 0 0 3 3M17 6h3v2a3 3 0 0 1-3 3M12 14v4M8 21h8"/></svg><span id="sRecordeTxt"></span></p>
     </div>
     <div class="calcard">
     <div class="calhead">
@@ -2159,7 +2164,11 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
     const mk = `${y}-${pad(m + 1)}`;
     const monthRows = viewRows().filter((r) => (r.data || "").startsWith(mk));
     $("sDays").textContent = new Set(monthRows.map((r) => r.data)).size;
-    $("sTime").textContent = fmtMin(sumMin(monthRows)).replace("0min", "0h");
+    // tempo no mês: o número grande e a palavra pequena ao lado (igual aos dias)
+    const totMin = sumMin(monthRows), hh = Math.floor(totMin / 60), mm = totMin % 60;
+    if (hh >= 1) { $("sTime").textContent = String(hh); $("sTimeUnit").textContent = (hh === 1 ? "hora" : "horas") + (mm ? ` e ${mm} min` : ""); }
+    else if (mm) { $("sTime").textContent = String(mm); $("sTimeUnit").textContent = "min"; }
+    else { $("sTime").textContent = "0"; $("sTimeUnit").textContent = "horas"; }
     $("sCount").textContent = monthRows.length;
     // sequência atual: dias seguidos com atividade até hoje (ou até ontem, se hoje ainda está vazio)
     let streak = 0; const w = new Date(); w.setHours(0, 0, 0, 0);
@@ -2179,8 +2188,11 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
     $("sNum").textContent = streak;
     $("sBadgeN").textContent = streak === 1 ? "1 dia seguido" : `${streak} dias seguidos`;
     $("sBadgeTxt").textContent = streak >= 1
-      ? (streak >= best ? "Seu recorde! Continue amanhã para manter o fogo" : `Recorde: ${best} dias · continue amanhã para manter o fogo`)
-      : (best ? `Sem sequência ativa · recorde: ${best} dia${best > 1 ? "s" : ""}` : "Marque um dia para acender o fogo");
+      ? (streak >= best ? "Seu recorde! Continue amanhã para manter o fogo" : "Continue amanhã para manter o fogo")
+      : (best ? "Sem sequência ativa" : "Marque um dia para acender o fogo");
+    // recorde, pequeno, embaixo da sequência
+    $("sRecorde").hidden = !best;
+    $("sRecordeTxt").textContent = `Seu recorde: ${best} ${best === 1 ? "dia seguido" : "dias seguidos"}`;
     $("sFire").hidden = streak < 2;
     $("sFire").innerHTML = streak >= 2 ? `<span aria-hidden="true">🔥</span><small>${streak}</small>` : "";
     $("sFire").title = streak >= 2 ? `Sequência de ${streak} dias seguidos` : "";
@@ -3042,7 +3054,7 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
 
   // Number pop-in: números dos quadros entram de baixo, com os dois últimos dígitos um pouco atrasados
   (function numberPopIn() {
-    const ids = ["tTotal", "tWins", "tLoss", "tPct", "sDays", "sTime", "sCount", "sStreak"];
+    const ids = ["tTotal", "tWins", "tLoss", "tPct", "sDays", "sTime", "sCount", "sStreak"];   // (sTime agora mostra só o número; a palavra fica ao lado)
     const els = ids.map((id) => $(id)).filter(Boolean);
     const mo = new MutationObserver((recs) => {
       const seen = new Set(recs.map((r) => (r.target.nodeType === 3 ? r.target.parentElement : r.target).closest("b")).filter(Boolean));
