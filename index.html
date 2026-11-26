@@ -1829,7 +1829,18 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
     $("calName").disabled = !canWrite;
     renderAll();
   }
+  // conta pausada pelo dono (tabela "pausados" no Supabase): a pessoa sai e vê um aviso; os dados ficam guardados
+  let avisoSaida = "";
+  async function contaPausada() {
+    try { const { data: r, error } = await sb.from("pausados").select("email").limit(1); return !error && Array.isArray(r) && r.length > 0; }
+    catch { return false; }
+  }
+  async function sairPausado() {
+    avisoSaida = "Seu acesso ao Zhen está pausado. Fale com quem te passou o acesso para liberar de novo. Seus dados continuam guardados.";
+    await sb.auth.signOut();
+  }
   async function loadAll() {
+    if (await contaPausada()) { await sairPausado(); return; }
     const rows = [];
     for (let from = 0; ; from += 1000) {
       const { data: page, error } = await sb.from("registros").select("colecao,id,dados").range(from, from + 999);
@@ -1842,6 +1853,7 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
     renderAll();
   }
   async function enterApp(user) {
+    if (await contaPausada()) { await sairPausado(); return; }
     sbUser = user;
     // primeira entrada de uma conta criada pelo dono: a pessoa troca a senha recebida por uma só dela
     if (!(user.user_metadata || {}).senha_definida) showAuth("primeira-senha");
@@ -1855,7 +1867,8 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
     sbUser = null; dataReady = false;
     for (const col of COLS) data[col] = [];
     renderAll();
-    showAuth("entrar");
+    showAuth("entrar", avisoSaida, avisoSaida ? "err" : "");
+    avisoSaida = "";
   }
   // outro aparelho pode ter mudado algo: recarrega ao voltar para a aba
   document.addEventListener("visibilitychange", () => { if (!document.hidden && sbUser) loadAll().catch(() => {}); });

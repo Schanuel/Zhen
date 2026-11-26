@@ -69,7 +69,9 @@ O site não tem botão de criar conta. Só o dono cria as contas, pelo Supabase.
 
 Na primeira entrada, o site pede para a pessoa criar uma senha só dela. Depois ela pode trocar quando quiser em **Trocar senha**, no topo do site.
 
-**Tirar o acesso de alguém:** Authentication → **Users** → clique nos **⋯** da pessoa → **Delete user**. Os dados dela são apagados junto.
+**Pausar o acesso de alguém (sem perder nada):** Table Editor → tabela **pausados** → **Insert row** → coloque o **e-mail** da pessoa → **Save**. Ela sai do site e vê um aviso; os dados continuam guardados. Para liberar, apague a linha dela nessa tabela.
+
+**Apagar alguém de vez:** Authentication → **Users** → clique nos **⋯** da pessoa → **Delete user**. Os dados dela são apagados junto, sem volta.
 
 ## Dicas
 
