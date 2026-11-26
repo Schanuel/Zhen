@@ -1301,6 +1301,79 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
 @media (prefers-reduced-motion: reduce) { .al-item { transition: none !important; transform: none !important; opacity: 1 !important; } }
 /* ===== fim do animated list ===== */
 
+/* ===== Foguinho da sequência: acender (faísca → chama) e apagar (encolhe, escurece, fumaça) ===== */
+#sFlame .t-icon-swap { position: relative; }
+#sFlame .t-icon-swap .t-icon { transition: none; transform-origin: 50% 86%; }
+.fogo-fx { grid-area: 1 / 1; position: relative; width: 100%; height: 100%; pointer-events: none; }
+.fogo-fx > span { position: absolute; left: 50%; pointer-events: none; }
+/* faísca + fagulhas */
+.fogo-fx .faisca { top: 76%; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; opacity: 0;
+  background: radial-gradient(circle, #fff 0 25%, #ffe680 45%, #ff9a2e 70%, rgba(255, 106, 18, 0) 72%);
+  box-shadow: 0 0 10px 3px rgba(255, 180, 60, .8), 0 0 22px 6px rgba(255, 90, 20, .45); }
+.fogo-fx .faisca i { position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; margin: -1.5px; border-radius: 50%; background: #ffd27a;
+  box-shadow: 0 0 6px 1px rgba(255, 170, 60, .9); opacity: 0; }
+/* clarão atrás da chama */
+.fogo-fx .clarao { top: 62%; width: 120%; aspect-ratio: 1; transform: translate(-50%, -50%) scale(.3); border-radius: 50%; opacity: 0;
+  background: radial-gradient(circle, rgba(255, 196, 80, .75), rgba(255, 106, 18, .35) 45%, rgba(255, 60, 20, 0) 70%); filter: blur(4px); }
+/* fumaça */
+.fogo-fx .fumaca { top: 58%; width: 0; height: 0; }
+.fogo-fx .fumaca i { position: absolute; left: -7px; top: -7px; width: 14px; height: 14px; border-radius: 50%; opacity: 0;
+  background: radial-gradient(circle, rgba(196, 196, 206, .7), rgba(150, 150, 162, .35) 55%, rgba(120, 120, 130, 0) 72%); filter: blur(2.5px); }
+
+/* --- acendendo --- */
+#sFlame .acendendo .t-icon[data-icon="a"] { animation: fogoSomeCinza 260ms ease-out both; }
+#sFlame .acendendo .t-icon[data-icon="b"] { animation: fogoAcende 1150ms cubic-bezier(.2, .9, .3, 1) 200ms both; }
+#sFlame .acendendo .faisca { animation: fogoFaisca 700ms cubic-bezier(.2, .8, .3, 1) both; }
+#sFlame .acendendo .faisca i:nth-child(1) { animation: fogoFagulha1 760ms ease-out 120ms both; }
+#sFlame .acendendo .faisca i:nth-child(2) { animation: fogoFagulha2 820ms ease-out 180ms both; }
+#sFlame .acendendo .faisca i:nth-child(3) { animation: fogoFagulha3 700ms ease-out 240ms both; }
+#sFlame .acendendo .clarao { animation: fogoClarao 1300ms ease-out 260ms both; }
+@keyframes fogoSomeCinza { to { opacity: 0; transform: scale(.85); } }
+@keyframes fogoFaisca {
+  0% { opacity: 0; transform: scale(0); }
+  22% { opacity: 1; transform: scale(1.7); }
+  45% { opacity: 1; transform: scale(.9); }
+  75% { opacity: .9; transform: translateY(-4px) scale(.7); }
+  100% { opacity: 0; transform: translateY(-10px) scale(.2); }
+}
+@keyframes fogoFagulha1 { 0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(-16px, -22px) scale(.4); } }
+@keyframes fogoFagulha2 { 0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(14px, -28px) scale(.4); } }
+@keyframes fogoFagulha3 { 0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(3px, -34px) scale(.3); } }
+@keyframes fogoAcende {
+  0%   { opacity: 0; transform: scale(.08, .05); filter: brightness(2.6) saturate(1.3) blur(1.5px); }
+  16%  { opacity: 1; transform: scale(.2, .18); filter: brightness(2.3) saturate(1.3) blur(.8px); }
+  38%  { transform: scale(.62, .7); filter: brightness(1.8) saturate(1.2) blur(.3px); }
+  60%  { transform: scale(1.08, 1.16); filter: brightness(1.45) saturate(1.15) blur(0); }
+  78%  { transform: scale(.96, .94); filter: brightness(1.15); }
+  90%  { transform: scale(1.02, 1.03); }
+  100% { opacity: 1; transform: scale(1); filter: none; }
+}
+@keyframes fogoClarao {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(.3); }
+  35% { opacity: 1; transform: translate(-50%, -50%) scale(1.15); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.45); }
+}
+
+/* --- apagando --- */
+#sFlame .apagando .t-icon[data-icon="b"] { animation: fogoApaga 1000ms cubic-bezier(.45, 0, .55, 1) both; }
+#sFlame .apagando .t-icon[data-icon="a"] { animation: fogoVoltaCinza 1500ms ease-out both; }
+#sFlame .apagando .fumaca i:nth-child(1) { animation: fogoFumaca1 1500ms ease-out 420ms both; }
+#sFlame .apagando .fumaca i:nth-child(2) { animation: fogoFumaca2 1600ms ease-out 560ms both; }
+#sFlame .apagando .fumaca i:nth-child(3) { animation: fogoFumaca3 1500ms ease-out 720ms both; }
+@keyframes fogoApaga {
+  0%   { opacity: 1; transform: scale(1); filter: none; }
+  12%  { transform: scale(1.05, 1.08); filter: brightness(1.2); }
+  30%  { transform: scale(.88, .78); filter: brightness(.9) saturate(.85); }
+  55%  { opacity: .9; transform: scale(.55, .42); filter: brightness(.55) saturate(.4); }
+  80%  { opacity: .5; transform: scale(.3, .18); filter: brightness(.3) saturate(.1) blur(.5px); }
+  100% { opacity: 0; transform: scale(.14, .06); filter: brightness(.15) saturate(0) blur(1px); }
+}
+@keyframes fogoVoltaCinza { 0%, 55% { opacity: 0; transform: scale(.82); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes fogoFumaca1 { 0% { opacity: 0; transform: translate(0, 0) scale(.35); } 20% { opacity: .75; } 100% { opacity: 0; transform: translate(-9px, -46px) scale(1.9); } }
+@keyframes fogoFumaca2 { 0% { opacity: 0; transform: translate(0, 0) scale(.3); } 20% { opacity: .65; } 100% { opacity: 0; transform: translate(10px, -52px) scale(2.1); } }
+@keyframes fogoFumaca3 { 0% { opacity: 0; transform: translate(0, 0) scale(.3); } 25% { opacity: .55; } 100% { opacity: 0; transform: translate(-2px, -60px) scale(2.3); } }
+/* ===== fim das animações do foguinho ===== */
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 
@@ -3371,6 +3444,32 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
     const liga = () => $("allList").querySelectorAll("ul.list").forEach((ul) => ligar(ul, allSheet, vTodas));
     new MutationObserver(liga).observe($("allList"), { childList: true, subtree: true });
     liga(); reabre("allBg", [vTodas]);
+  })();
+
+  /* ---------- Foguinho da sequência: anima só quando muda de apagado para aceso (ou o contrário) ---------- */
+  (function fogoAnimado() {
+    const box = $("sFlame"); if (!box) return;
+    const t0 = performance.now(); let timer = null;
+    function prepara(sw) {
+      if (sw._fx) return; sw._fx = true;
+      const fx = document.createElement("span"); fx.className = "fogo-fx"; fx.setAttribute("aria-hidden", "true");
+      fx.innerHTML = '<span class="clarao"></span><span class="faisca"><i></i><i></i><i></i></span><span class="fumaca"><i></i><i></i><i></i></span>';
+      sw.appendChild(fx);
+      new MutationObserver((recs) => {
+        for (const r of recs) {
+          const agora = sw.dataset.state;
+          if (r.oldValue === agora) continue;
+          // não anima ao abrir o site nem com a aba do calendário escondida
+          if (performance.now() - t0 < 1500 || !box.offsetParent) continue;
+          const cls = agora === "b" ? "acendendo" : "apagando";
+          sw.classList.remove("acendendo", "apagando"); void sw.offsetWidth; sw.classList.add(cls);
+          clearTimeout(timer); timer = setTimeout(() => sw.classList.remove(cls), 2300);
+        }
+      }).observe(sw, { attributes: true, attributeFilter: ["data-state"], attributeOldValue: true });
+    }
+    const procura = () => { const sw = box.querySelector(".t-icon-swap"); if (sw) prepara(sw); };
+    new MutationObserver(procura).observe(box, { childList: true });
+    procura();
   })();
 
   /* ---------- Modal open/close (transitions.dev): abre crescendo, fecha encolhendo ---------- */
