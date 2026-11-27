@@ -2256,7 +2256,7 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
     applyType();
     if (r.tipo === "leitura") { $("aBook").value = r.livro || ""; $("aPages").value = r.paginas || ""; $("aObs").value = r.obs || ""; }
     else if (r.tipo === "estudos") { $("aSubject").value = r.materia || ""; $("aQuestions").value = r.questoes || ""; $("aObs").value = r.obs || ""; }
-    else { $("aName").value = r.atividade || ""; }
+    else { $("aName").value = r.atividade || ""; $("aObs").value = r.obs || ""; }
     const min = Number(r.minutos) || 0;
     $("aH").value = min >= 60 ? Math.floor(min / 60) : "";
     $("aM").value = min % 60 ? min % 60 : "";
@@ -2399,7 +2399,7 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
     $("modeGeral").hidden = t !== "geral";
     $("modeLeitura").hidden = t !== "leitura";
     $("modeEstudos").hidden = t !== "estudos";
-    $("obsField").hidden = t === "geral";
+    $("obsField").hidden = false;   // observação sempre disponível
     $("aName").required = t === "geral";
     $("aBook").required = t === "leitura";
     $("aSubject").required = t === "estudos";
@@ -2431,7 +2431,7 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
       if (!minutos && !body.questoes) { $("aMsg").textContent = "Coloque o tempo ou as questões feitas."; $("aQuestions").focus(); return; }
     } else {
       const atividade = $("aName").value.trim(); if (!atividade) { $("aName").focus(); return; }
-      body.atividade = atividade;
+      body.atividade = atividade; body.obs = $("aObs").value.trim();
       if (!minutos) { $("aMsg").textContent = "Coloque quanto tempo durou."; $("aM").focus(); return; }
     }
     const prev = editingId ? data.atividades.find((x) => x.id === editingId) : null;
