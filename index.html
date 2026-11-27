@@ -1387,9 +1387,9 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
 .fdate .fsel-btn .fdate-ico { display: inline-flex; color: var(--red); }
 .fdate .fsel-btn .fdate-ico svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .fdate .fsel-val.vazio { color: #5f5f66; font-weight: 500; }
-.fdate-menu { position: absolute; left: 0; top: calc(100% + 6px); z-index: 70; width: 304px; max-width: calc(100vw - 32px); padding: 12px;
-  background: rgba(14, 14, 17, .97); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
-  border: 1px solid var(--line-2); border-radius: 16px; box-shadow: 0 26px 60px -18px rgba(0, 0, 0, .9); }
+.fdate-menu { position: absolute; left: 0; top: calc(100% + 6px); z-index: 90; width: 304px; max-width: calc(100vw - 32px); padding: 12px;
+  background: #0b0b0e; border: 1px solid var(--line-2); border-radius: 16px;
+  box-shadow: 0 30px 70px -14px rgba(0, 0, 0, .95), 0 0 0 1px rgba(0, 0, 0, .6); }
 .fdate-menu.up { top: auto; bottom: calc(100% + 6px); }
 .fdate-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
 .fdate-title { font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; text-transform: uppercase; letter-spacing: .05em; color: var(--fg); }
@@ -3584,9 +3584,10 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
       const v = valor(); const base = v ? parseISO(v) : new Date();
       vista = new Date(base.getFullYear(), base.getMonth(), 1); foco = v || iso(new Date());
       desenha(0);
-      const r = btn.getBoundingClientRect(), baixo = innerHeight - r.bottom, up = baixo < 400 && r.top > baixo;
-      menu.classList.toggle("up", up); menu.dataset.origin = up ? "bottom-left" : "top-left";
-      dropdownOpen(menu); wrap.classList.add("open"); btn.setAttribute("aria-expanded", "true");
+      // abre sempre para baixo; se não couber, a página rola um pouco para mostrar o calendário inteiro
+      menu.classList.remove("up"); menu.dataset.origin = "top-left";
+      dropdownOpen(menu);
+      setTimeout(() => { const mr = menu.getBoundingClientRect(); if (mr.bottom > innerHeight - 12) window.scrollBy({ top: mr.bottom - innerHeight + 16, behavior: "smooth" }); }, 30); wrap.classList.add("open"); btn.setAttribute("aria-expanded", "true");
       fselAberto = api;
       const f = menu.querySelector('.fdate-days [tabindex="0"]'); if (f) f.focus({ preventScroll: true });
     }
