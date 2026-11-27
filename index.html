@@ -1380,6 +1380,39 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
 .srecorde { justify-self: center; display: inline-flex; align-items: center; gap: 6px; margin: -4px 0 0; font-size: .74rem; font-weight: 600; color: var(--ink-3); letter-spacing: .01em; }
 .srecorde svg { width: 13px; height: 13px; fill: none; stroke: #f4c542; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
 
+/* ===== Calendário de escolher data (no lugar do calendário do navegador) ===== */
+.fdate { position: relative; }
+.fdate > input.fsel-native { position: absolute !important; inset: 0; width: 100%; height: 100%; opacity: 0; pointer-events: none; }
+.fdate .fsel-btn .fdate-ico { display: inline-flex; color: var(--red); }
+.fdate .fsel-btn .fdate-ico svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.fdate .fsel-val.vazio { color: #5f5f66; font-weight: 500; }
+.fdate-menu { position: absolute; left: 0; top: calc(100% + 6px); z-index: 70; width: 304px; max-width: calc(100vw - 32px); padding: 12px;
+  background: rgba(14, 14, 17, .97); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+  border: 1px solid var(--line-2); border-radius: 16px; box-shadow: 0 26px 60px -18px rgba(0, 0, 0, .9); }
+.fdate-menu.up { top: auto; bottom: calc(100% + 6px); }
+.fdate-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.fdate-title { font-family: var(--font-display); font-weight: 800; font-size: 1.05rem; text-transform: uppercase; letter-spacing: .05em; color: var(--fg); }
+.fdate-nav { display: flex; gap: 4px; }
+.fdate-nav button { width: 32px; height: 32px; padding: 0; display: grid; place-items: center; border-radius: 9px; background: transparent; color: var(--ink-2); border: 1px solid var(--line-2); }
+.fdate-nav button:hover { color: var(--fg); border-color: var(--red-soft); filter: none; }
+.fdate-nav svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.fdate-week, .fdate-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.fdate-week span { text-align: center; font-size: .68rem; font-weight: 700; letter-spacing: .06em; color: var(--ink-3); padding: 4px 0 6px; }
+.fdate-days { transition: opacity 180ms ease, transform 220ms var(--dropdown-ease); }
+.fdate-days.vai-esq { opacity: 0; transform: translateX(-10px); }
+.fdate-days.vai-dir { opacity: 0; transform: translateX(10px); }
+.fdate-days button { position: relative; height: 36px; padding: 0; border-radius: 10px; background: transparent; color: var(--ink-2); font-weight: 600; font-size: .88rem;
+  font-variant-numeric: tabular-nums; border: 0; transition: background .12s, color .12s; }
+.fdate-days button:hover, .fdate-days button:focus-visible { background: rgba(255, 255, 255, .08); color: var(--fg); outline: none; filter: none; }
+.fdate-days button.fora { color: #4a4a52; }
+.fdate-days button.hoje { color: var(--fg); box-shadow: inset 0 0 0 1px var(--red-soft); }
+.fdate-days button[aria-selected="true"] { background: var(--red); color: var(--chip-ink, #fff); box-shadow: none; }
+.fdate-foot { display: flex; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.fdate-foot button { flex: 1; padding: 8px 10px; font-size: .82rem; border-radius: 9px; background: transparent; color: var(--ink-2); border: 1px solid var(--line-2); font-weight: 600; }
+.fdate-foot button:hover { color: var(--fg); border-color: var(--red-soft); filter: none; }
+@media (prefers-reduced-motion: reduce) { .fdate-days { transition: none !important; } }
+/* ===== fim do calendário de escolher data ===== */
+
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
 
@@ -3498,6 +3531,98 @@ body .surfchips button[aria-pressed="true"] small { color: inherit; opacity: .72
     new MutationObserver(procura).observe(box, { childList: true });
     procura();
   })();
+
+  /* ---------- Calendário de escolher data, no estilo do Zhen ---------- */
+  const SVG_CAL = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>';
+  const SVG_ESQ = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5L5.5 8l4.5 4.5"/></svg>';
+  const SVG_DIR = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5L10.5 8 6 12.5"/></svg>';
+  function fancyDate(inp) {
+    const wrap = document.createElement("div"); wrap.className = "fdate";
+    inp.parentNode.insertBefore(wrap, inp); wrap.appendChild(inp);
+    inp.classList.add("fsel-native"); inp.tabIndex = -1; inp.setAttribute("aria-hidden", "true");
+    const btn = document.createElement("button"); btn.type = "button"; btn.className = "fsel-btn"; btn.id = inp.id + "Btn";
+    btn.setAttribute("aria-haspopup", "dialog"); btn.setAttribute("aria-expanded", "false");
+    btn.innerHTML = `<span class="fsel-val"></span><span class="fdate-ico">${SVG_CAL}</span>`;
+    const menu = document.createElement("div"); menu.className = "fdate-menu t-dropdown"; menu.id = inp.id + "Cal"; menu.hidden = true;
+    menu.setAttribute("role", "dialog"); menu.setAttribute("aria-label", "Escolher data");
+    menu.innerHTML = `<div class="fdate-head"><span class="fdate-title"></span><div class="fdate-nav"><button type="button" data-n="-1" aria-label="Mês anterior">${SVG_ESQ}</button><button type="button" data-n="1" aria-label="Próximo mês">${SVG_DIR}</button></div></div>
+      <div class="fdate-week">${["D", "S", "T", "Q", "Q", "S", "S"].map((d) => `<span>${d}</span>`).join("")}</div>
+      <div class="fdate-days" role="grid"></div>
+      <div class="fdate-foot"><button type="button" data-q="-1">Ontem</button><button type="button" data-q="0">Hoje</button></div>`;
+    wrap.append(btn, menu);
+    document.querySelectorAll(`label[for="${inp.id}"]`).forEach((l) => { l.htmlFor = btn.id; });
+    const nativo = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+    let vista = null, foco = null;
+    const valor = () => nativo.get.call(inp);
+    function label() {
+      const v = valor(), el = btn.querySelector(".fsel-val");
+      if (!v) { el.textContent = "Escolha a data"; el.classList.add("vazio"); return; }
+      const d = parseISO(v), hoje = iso(new Date());
+      el.classList.remove("vazio");
+      el.textContent = (v === hoje ? "Hoje, " : "") + `${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
+    }
+    Object.defineProperty(inp, "value", { configurable: true, get: valor, set(v) { nativo.set.call(inp, v); label(); } });
+    function desenha(dir) {
+      const grid = menu.querySelector(".fdate-days");
+      const y = vista.getFullYear(), m = vista.getMonth();
+      menu.querySelector(".fdate-title").textContent = `${MESES[m]} ${y}`;
+      const ini = new Date(y, m, 1); ini.setDate(1 - ini.getDay());
+      const sel = valor(), hoje = iso(new Date()); let html = "";
+      for (let i = 0; i < 42; i++) {
+        const d = new Date(ini); d.setDate(ini.getDate() + i); const k = iso(d);
+        html += `<button type="button" data-d="${k}" tabindex="-1" class="${d.getMonth() !== m ? "fora" : ""}${k === hoje ? " hoje" : ""}" aria-selected="${k === sel}" aria-label="${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}">${d.getDate()}</button>`;
+      }
+      const troca = () => { grid.innerHTML = html; const alvo = grid.querySelector(`[data-d="${foco}"]`) || grid.querySelector('[aria-selected="true"]') || grid.querySelector(".hoje") || grid.querySelector("button:not(.fora)"); if (alvo) { alvo.tabIndex = 0; if (menu.contains(document.activeElement)) alvo.focus({ preventScroll: true }); } };
+      if (dir) { grid.classList.add(dir < 0 ? "vai-dir" : "vai-esq"); setTimeout(() => { troca(); grid.style.transition = "none"; grid.classList.remove("vai-dir", "vai-esq"); grid.classList.add(dir < 0 ? "vai-esq" : "vai-dir"); void grid.offsetWidth; grid.style.transition = ""; grid.classList.remove("vai-esq", "vai-dir"); }, 120); }
+      else troca();
+    }
+    const aberto = () => menu.classList.contains("is-open");
+    function abre() {
+      if (fselAberto && fselAberto.close) fselAberto.close();
+      const v = valor(); const base = v ? parseISO(v) : new Date();
+      vista = new Date(base.getFullYear(), base.getMonth(), 1); foco = v || iso(new Date());
+      desenha(0);
+      const r = btn.getBoundingClientRect(), baixo = innerHeight - r.bottom, up = baixo < 400 && r.top > baixo;
+      menu.classList.toggle("up", up); menu.dataset.origin = up ? "bottom-left" : "top-left";
+      dropdownOpen(menu); wrap.classList.add("open"); btn.setAttribute("aria-expanded", "true");
+      fselAberto = api;
+      const f = menu.querySelector('.fdate-days [tabindex="0"]'); if (f) f.focus({ preventScroll: true });
+    }
+    function fecha(volta) {
+      if (fselAberto === api) fselAberto = null;
+      dropdownClose(menu); wrap.classList.remove("open"); btn.setAttribute("aria-expanded", "false");
+      if (volta) btn.focus({ preventScroll: true });
+    }
+    const api = { wrap, close: () => fecha() };
+    function escolhe(k) {
+      inp.value = k;
+      inp.dispatchEvent(new Event("input", { bubbles: true })); inp.dispatchEvent(new Event("change", { bubbles: true }));
+      fecha(true);
+    }
+    function mudaMes(n) { vista = new Date(vista.getFullYear(), vista.getMonth() + n, 1); desenha(n); }
+    btn.addEventListener("click", () => (aberto() ? fecha() : abre()));
+    btn.addEventListener("keydown", (e) => { if (e.key === "ArrowDown") { e.preventDefault(); abre(); } });
+    menu.addEventListener("click", (e) => {
+      const n = e.target.closest("[data-n]"); if (n) { mudaMes(+n.dataset.n); return; }
+      const q = e.target.closest("[data-q]"); if (q) { const d = new Date(); d.setDate(d.getDate() + +q.dataset.q); escolhe(iso(d)); return; }
+      const d = e.target.closest("[data-d]"); if (d) escolhe(d.dataset.d);
+    });
+    menu.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); fecha(true); return; }
+      const at = document.activeElement.closest && document.activeElement.closest("[data-d]"); if (!at) return;
+      const passo = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key];
+      if (passo || e.key === "PageUp" || e.key === "PageDown") {
+        e.preventDefault();
+        const d = parseISO(at.dataset.d);
+        if (passo) d.setDate(d.getDate() + passo); else d.setMonth(d.getMonth() + (e.key === "PageUp" ? -1 : 1));
+        foco = iso(d);
+        if (d.getMonth() !== vista.getMonth() || d.getFullYear() !== vista.getFullYear()) { const n = d < vista ? -1 : 1; vista = new Date(d.getFullYear(), d.getMonth(), 1); desenha(n); }
+        else { const alvo = menu.querySelector(`[data-d="${foco}"]`); if (alvo) { at.tabIndex = -1; alvo.tabIndex = 0; alvo.focus(); } }
+      } else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); escolhe(at.dataset.d); }
+    });
+    label();
+  }
+  document.querySelectorAll('input[type="date"]').forEach((inp) => { if (inp.id) fancyDate(inp); });
 
   /* ---------- Modal open/close (transitions.dev): abre crescendo, fecha encolhendo ---------- */
   (function modalTransitions() {
